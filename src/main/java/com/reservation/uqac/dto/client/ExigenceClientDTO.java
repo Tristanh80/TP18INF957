@@ -1,5 +1,8 @@
 package com.reservation.uqac.dto.client;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
+import jakarta.persistence.Temporal;
+import jakarta.persistence.TemporalType;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -14,7 +17,11 @@ public class ExigenceClientDTO {
     private String typeHebergement;
     private String typeChambre;
     private String services;
+    @JsonFormat(pattern = "dd/MM/yyyy")
+    @Temporal(TemporalType.DATE)
     private Date dateDebut;
+    @JsonFormat(pattern = "dd/MM/yyyy")
+    @Temporal(TemporalType.DATE)
     private Date dateFin;
     private Float prixMax;
 
