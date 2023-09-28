@@ -9,6 +9,8 @@ import com.reservation.uqac.domaine.reservation.ReservationRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.sql.Date;
+import java.text.SimpleDateFormat;
 import java.util.List;
 
 @Service
@@ -49,22 +51,68 @@ public class SystemeGestionInterfaceImpl implements SystemeGestionInterface {
         return reservationRepository.getReservationByHebergementName(name);
     }
 
-    @Override
-    public Integer getNbChambreAvailableDuringThisTime(ReservationDomaine reservationDomaine) {
-        HebergementDomaine hebergementDomaine = hebergementRepository.getHebergementById(reservationDomaine.getHebergementId());
-        if (hebergementDomaine == null) {
+    private Integer getNumberOfChambresAvailable(ReservationDomaine reservationDomaineEnCoursDeDemande,
+                                                  List<ReservationDomaine> listeDesReservationExistantes,
+                                                        Integer nbChambres) {
+        Date dateDebutReservationEnCoursDeDemande;
+        Date dateFinReservationEnCoursDeDemande;
+        Date dateDebutReservationExistant;
+        Date dateFinReservationExistant;
+        SimpleDateFormat simpleDateFormat = new SimpleDateFormat("dd/MM/yyyy");
+
+        try {
+            dateDebutReservationEnCoursDeDemande =
+                    new Date(simpleDateFormat.parse(reservationDomaineEnCoursDeDemande.getDateDebut()).getTime());
+            dateFinReservationEnCoursDeDemande =
+                    new Date(simpleDateFormat.parse(reservationDomaineEnCoursDeDemande.getDateFin()).getTime());
+        } catch (Exception e) {
             return null;
         }
-        List<ReservationDomaine> reservationDomaineList = reservationRepository.getAllReservationDuringThisTime(reservationDomaine);
-        switch (reservationDomaine.getTypeChambre().toLowerCase()) {
+        for (ReservationDomaine reservationDomaineExistant : listeDesReservationExistantes) {
+            try {
+                dateDebutReservationExistant =
+                        new Date(simpleDateFormat.parse(reservationDomaineExistant.getDateDebut()).getTime());
+                dateFinReservationExistant =
+                        new Date(simpleDateFormat.parse(reservationDomaineExistant.getDateFin()).getTime());
+            } catch (Exception e) {
+                return null;
+            }
+            if (dateDebutReservationEnCoursDeDemande.before(dateFinReservationExistant)
+                    && dateFinReservationEnCoursDeDemande.after(dateDebutReservationExistant)) {
+                nbChambres--;
+            }
+        }
+        return nbChambres;
+    }
+
+    private Integer getNumberOfRoomsAvailableDispatcher(ReservationDomaine reservationDomaineEnCoursDeDemande,
+                                                        List<ReservationDomaine> reservationDomaineList
+                                                        ) {
+        switch (reservationDomaineEnCoursDeDemande.getTypeChambre().toLowerCase()) {
             case "simple" -> {
-                return hebergementDomaine.getNombreChambresSimple() - reservationDomaineList.size();
+
+                if (reservationDomaineList != null && !reservationDomaineList.isEmpty()) {
+                    reservationDomaineList = reservationDomaineList.stream().filter(reservationDomaine -> reservationDomaine.getTypeChambre().equals(
+                            "SIMPLE")).toList();
+                }
+                return getNumberOfChambresAvailable(reservationDomaineEnCoursDeDemande, reservationDomaineList,
+                        hebergementRepository.getHebergementById(reservationDomaineEnCoursDeDemande.getHebergementId()).getNombreChambresSimple());
             }
             case "double" -> {
-                return hebergementDomaine.getNombreChambresDouble() - reservationDomaineList.size();
+                if (reservationDomaineList != null && !reservationDomaineList.isEmpty()) {
+                    reservationDomaineList = reservationDomaineList.stream().filter(reservationDomaine -> reservationDomaine.getTypeChambre().equals(
+                            "DOUBLE")).toList();
+                }
+                return getNumberOfChambresAvailable(reservationDomaineEnCoursDeDemande, reservationDomaineList,
+                        hebergementRepository.getHebergementById(reservationDomaineEnCoursDeDemande.getHebergementId()).getNombreChambresDouble());
             }
             case "suite" -> {
-                return hebergementDomaine.getNombreChambresSuite() - reservationDomaineList.size();
+                if (reservationDomaineList != null && !reservationDomaineList.isEmpty()) {
+                    reservationDomaineList = reservationDomaineList.stream().filter(reservationDomaine -> reservationDomaine.getTypeChambre().equals(
+                            "SUITE")).toList();
+                }
+                return getNumberOfChambresAvailable(reservationDomaineEnCoursDeDemande, reservationDomaineList,
+                        hebergementRepository.getHebergementById(reservationDomaineEnCoursDeDemande.getHebergementId()).getNombreChambresSuite());
             }
             default -> {
                 return null;
@@ -73,8 +121,37 @@ public class SystemeGestionInterfaceImpl implements SystemeGestionInterface {
     }
 
     @Override
+    public Integer getNbChambreAvailableDuringThisTime(ReservationDomaine reservationDomaine) {
+        HebergementDomaine hebergementDomaine = hebergementRepository.getHebergementById(reservationDomaine.getHebergementId());
+        if (hebergementDomaine == null) {
+            return null;
+        }
+        TypeChambre typeChambre;
+        try {
+            typeChambre = TypeChambre.valueOf(reservationDomaine.getTypeChambre().toUpperCase());
+        } catch (IllegalArgumentException e) {
+            System.err.println("Type chambre not found");
+            return null;
+        }
+        List<ReservationDomaine> reservationDomaineList =
+                reservationRepository.getReservationByHebergementId(reservationDomaine.getHebergementId());
+
+        return getNumberOfRoomsAvailableDispatcher(reservationDomaine, reservationDomaineList);
+    }
+
+    @Override
     public ReservationDomaine doReservation(ReservationDomaine reservationDomaine, float price) {
         HebergementDomaine hebergementDomaine = hebergementRepository.getHebergementById(reservationDomaine.getHebergementId());
+        Integer nbChambreAvailable = getNbChambreAvailableDuringThisTime(reservationDomaine);
+        if (nbChambreAvailable == null) {
+            System.err.println("Hebergement not found");
+            return null;
+        }
+
+        if (nbChambreAvailable == 0) {
+            System.err.println("No chambre available");
+            return null;
+        }
 
         List<ReservationDomaine> reservationDomaineList = reservationRepository.getAllReservationDuringThisTime(reservationDomaine);
         int nbChambre = 0;

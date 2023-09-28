@@ -21,10 +21,13 @@ public class MapperReservationInfraToReservationDomaine {
         if (reservationInfra == null) {
             return null;
         }
+        SimpleDateFormat format = new SimpleDateFormat("dd/MM/yyyy");
+        String dateDebut = format.format(reservationInfra.getDateDebut());
+        String dateFin = format.format(reservationInfra.getDateFin());
         return new ReservationDomaine(
                 reservationInfra.getId(),
-                reservationInfra.getDateDebut().toString(),
-                reservationInfra.getDateFin().toString(),
+                dateDebut,
+                dateFin,
                 reservationInfra.getHebergementInfra().getId(),
                 reservationInfra.getTypeChambre().toString(),
                 reservationInfra.getClientInfra().getId(),
