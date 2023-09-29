@@ -51,6 +51,10 @@ public class SystemeGestionInterfaceImpl implements SystemeGestionInterface {
         return reservationRepository.getReservationByHebergementName(name);
     }
 
+    /*
+        * Retourne le nombre de chambre disponible pour une reservation en fonction des criteres du client
+        * L'entree est de la bonne forme
+     */
     private Integer getNumberOfChambresAvailable(ReservationDomaine reservationDomaineEnCoursDeDemande,
                                                   List<ReservationDomaine> listeDesReservationExistantes,
                                                         Integer nbChambres) {
@@ -85,6 +89,10 @@ public class SystemeGestionInterfaceImpl implements SystemeGestionInterface {
         return nbChambres;
     }
 
+    /*
+        * Filtre la liste des reservations en fonction du type de chambre
+        * Dispatche la requete en fonction du type de chambre
+     */
     private Integer getNumberOfRoomsAvailableDispatcher(ReservationDomaine reservationDomaineEnCoursDeDemande,
                                                         List<ReservationDomaine> reservationDomaineList
                                                         ) {
@@ -120,6 +128,11 @@ public class SystemeGestionInterfaceImpl implements SystemeGestionInterface {
         }
     }
 
+    /*
+        * Retourne le nombre de chambre disponible pour une reservation en fonction des criteres du client
+        * Retourne null si l'hebergement n'existe pas
+        * Retourne null si le type de chambre n'existe pas
+     */
     @Override
     public Integer getNbChambreAvailableDuringThisTime(ReservationDomaine reservationDomaine) {
         HebergementDomaine hebergementDomaine = hebergementRepository.getHebergementById(reservationDomaine.getHebergementId());
@@ -139,6 +152,9 @@ public class SystemeGestionInterfaceImpl implements SystemeGestionInterface {
         return getNumberOfRoomsAvailableDispatcher(reservationDomaine, reservationDomaineList);
     }
 
+    /*
+    * Effectue une reservation si les criteres sont respectes
+     */
     @Override
     public ReservationDomaine doReservation(ReservationDomaine reservationDomaine, float price) {
         HebergementDomaine hebergementDomaine = hebergementRepository.getHebergementById(reservationDomaine.getHebergementId());
@@ -156,6 +172,8 @@ public class SystemeGestionInterfaceImpl implements SystemeGestionInterface {
         List<ReservationDomaine> reservationDomaineList = reservationRepository.getAllReservationDuringThisTime(reservationDomaine);
         int nbChambre = 0;
         float prix = 0;
+
+        // Recuperaion du nombre de chambre et du prix
         switch (reservationDomaine.getTypeChambre().toLowerCase()) {
             case "simple" -> {
                 nbChambre = hebergementDomaine.getNombreChambresSimple();
